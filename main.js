@@ -1,71 +1,128 @@
-const canvas = document.querySelector("canvas")
+const canvas = document.querySelector("canvas");
 ctx = canvas.getContext("2d");
-toolBtns = document.querySelectorAll(".tool")
+toolBtns = document.querySelectorAll(".tool");
+fillColor = document.querySelector("#fill-color");
+sizeSlider = document.querySelector("#size-slider");
+colorBtns = document.querySelectorAll(".colors .option");
+colorPicker = document.querySelector("#color-picker");
+clearCanvas = document.querySelector(".clear-canvas")
+saveImg = document.querySelector(".save-img")
 
+let prevMouseX, prevMouseY, snapshot;
 let isDrawing = false;
 selectedTool = "brush";
-brushWidth = 1;
+brushWidth = 5;
+selectedColor = "#000";
 
-window.addEventListener("load", () =>{
-    canvas.width = canvas.offsetWidth;
-    canvas.height = canvas.offsetHeight;
-})
-const drawing = (e) =>{
-    if(!isDrawing) return;
+const setCanvasBackground = () =>{
+    ctx.fillStyle = '#fff';
+    ctx.fillRect(0,0, canvas.width, canvas.height);
+    ctx.fillStyle = selectedColor
+}
 
-    if(selectedTool === "brush"){
-        ctx.lineTo(e.offsetX, e.offsetY);
-        ctx.stroke();
-    } else if(selectedTool === "rectangle"){
-        drawRect();
+window.addEventListener("load", () => {
+	canvas.width = canvas.offsetWidth;
+	canvas.height = canvas.offsetHeight;
+    setCanvasBackground();
+});
+
+const drawRect = (e) =>
+	fillColor.checked
+		? ctx.fillRect(
+				e.offsetX,
+				e.offsetY,
+				prevMouseX - e.offsetX,
+				prevMouseY - e.offsetY
+		  )
+		: ctx.strokeRect(
+				e.offsetX,
+				e.offsetY,
+				prevMouseX - e.offsetX,
+				prevMouseY - e.offsetY
+		  );
+
+const drawCircle = (e) => {
+	ctx.beginPath();
+	let radius = Math.sqrt(
+		Math.pow(prevMouseX - e.offsetX, 2) + Math.pow(prevMouseY - e.offsetY, 2)
+	);
+	ctx.arc(prevMouseX, prevMouseY, radius, 0, 2 * Math.PI);
+	fillColor.checked ? ctx.fill() : ctx.stroke();
+};
+
+const drawTriangle = (e) => { //Buduję trójkąt używając funkcji 
+    ctx.beginPath(); //Rozpoczynam nową ścieżkę rysowania 
+    ctx.moveTo(prevMouseX, prevMouseY); //Steruję trójkątem podążając za kursorem
+    ctx.lineTo(e.offsetX, e.offsetY); // Tworzę pierwszą linię zgodnie z ruchem kursora 
+    ctx.lineTo(prevMouseX * 2 - e.offsetX, e.offsetY); // Tworzę dolną krawędź trójkąta 
+    ctx.closePath(); //Zamykam ścieżkę rysowania tworząc trójkąt
+    fillColor.checked ? ctx.fill() : ctx.stroke();
+}
+
+const startDraw = (e) => {
+	isDrawing = true;
+	prevMouseX = e.offsetX;
+	prevMouseY = e.offsetY;
+	ctx.beginPath();
+	ctx.lineWidth = brushWidth;
+    ctx.strokeStyle = selectedColor;
+    ctx.fillStyle = selectedColor;
+	snapshot = ctx.getImageData(0, 0, canvas.width, canvas.height);
+};
+
+const drawing = (e) => {
+	if (!isDrawing) return;
+	ctx.putImageData(snapshot, 0, 0);
+	if (selectedTool === "brush" || selectedTool === "eraser") {
+        ctx.strokeStyle = selectedTool === "eraser" ? "#fff" : selectedColor;
+		ctx.lineTo(e.offsetX, e.offsetY);
+		ctx.stroke();
+	} else if (selectedTool === "rectangle") {
+		drawRect(e);
+	} else if (selectedTool === "circle") {
+		drawCircle(e);
+	} else {
+        drawTriangle(e);
     }
-    
-}
+};
 
-const startDraw = () =>{
-    isDrawing = true;
-    ctx.beginPath();
-    ctx.lineWidth = brushWidth;
-}
+toolBtns.forEach((btn) => {
+	btn.addEventListener("click", () => {
+		// document.querySelector(".options .active").classList.remove("active");
+		btn.classList.toggle("active");
+		selectedTool = btn.id;
+		console.log(btn.id);
+	});
+});
 
-toolBtns.forEach(btn =>{
-    btn.addEventListener("click", () =>{
-        document.querySelector(".options .active").classList.remove("active")
-        btn.classList.add("active")
-        selectedTool = btn.id
-        console.log(btn.id)
+sizeSlider.addEventListener("change", () => brushWidth = sizeSlider.value); // Nasłuchiwanie na zmianę, które ustawia wartość slidera jako grubość pędzla 
+
+colorBtns.forEach(btn =>{
+    btn.addEventListener("click", () => {
+        // document.querySelector(".oprtions .selected").classList.remove("selected");
+        btn.classList.toggle("selected");
+        selectedColor = window.getComputedStyle(btn).getPropertyValue("background-color");
     })
+})
+
+colorPicker.addEventListener("change", () =>{
+    colorPicker.parentElement.style.background = colorPicker.value;
+    colorPicker.parentElement.click()
+})
+
+clearCanvas.addEventListener("click", () =>{
+    ctx.clearRect(0,0, canvas.width, canvas.height)
+    setCanvasBackground();
+})
+
+saveImg.addEventListener("click", () =>{
+    const link = document.createElement("a"); //Tworzę tag linku <a>
+    link.download = `${Date.now()}.jpg`; //Przypisuję aktualną datę jako wartość linku do pobrania
+    link.href = canvas.toDataURL(); // CanvasData jako wartość href linku
+    link.click(); //klikanie linku do pobrania 
 })
 
 canvas.addEventListener("mousemove", drawing);
 canvas.addEventListener("mousedown", startDraw);
-canvas.addEventListener("mouseup", () => isDrawing = false);
+canvas.addEventListener("mouseup", () => (isDrawing = false));
 
-/*    const canvas = document.querySelector("canvas"):
-Ta linia kodu tworzy zmienną o nazwie canvas. Wartość tej zmiennej jest ustawiana na pierwszy element <canvas>, który jest znaleziony na stronie internetowej. Element <canvas> jest obszarem, na którym możemy rysować grafikę za pomocą JavaScript.
-
-ctx = canvas.getContext("2d");:
-    Ta linia kodu tworzy zmienną ctx, która będzie przechowywać kontekst rysowania (w tym przypadku 2D) dla elementu <canvas>. Kontekst rysowania jest potrzebny, aby móc używać funkcji do rysowania na elemencie <canvas>.
-
-window.addEventListener("load", () => {:
-    Ta linia kodu dodaje nasłuchiwanie zdarzenia load na obiekcie window. Zdarzenie load występuje, gdy cała strona internetowa została w pełni załadowana, włącznie z zawartością elementów takich jak obrazki i style. Funkcja strzałkowa, która jest przekazywana jako drugi argument do addEventListener, zostanie uruchomiona, gdy zdarzenie load wystąpi.
-
-canvas.width = canvas.offsetWidth;:
-    Ta linia kodu ustawia szerokość elementu <canvas> na szerokość jego kontenera. Jest to często używane, aby upewnić się, że element <canvas> zajmuje całą dostępną przestrzeń w swoim kontenerze.
-
-canvas.height = canvas.offsetHeight;:
-    Ta linia kodu ustawia wysokość elementu <canvas> na wysokość jego kontenera. To pomaga dostosować rozmiar elementu <canvas> do rozmiaru kontenera, co jest ważne dla responsywnego projektowania.
-
-const drawing = (e) => {:
-    Ta linia kodu definiuje funkcję o nazwie drawing, która zostanie wywołana, gdy użytkownik będzie poruszać myszą po elemencie <canvas>. Funkcja ta przyjmuje argument e, który reprezentuje obiekt zdarzenia myszy.
-
-ctx.lineTo(e.offsetX, e.offsetY);:
-    W tej linii kodu używamy kontekstu rysowania (ctx), aby stworzyć linię od aktualnej pozycji rysowania do nowej pozycji o współrzędnych (e.offsetX, e.offsetY). e.offsetX i e.offsetY to współrzędne myszy na elemencie <canvas>, gdzie kursor myszy aktualnie się znajduje.
-
-ctx.stroke();:
-    Ta linia kodu wywołuje metodę stroke() na kontekście rysowania (ctx). Metoda ta rysuje linię z punktu A do punktu B na elemencie <canvas>. Linia będzie rysowana zgodnie z aktualnie ustawionymi parametrami rysowania, takimi jak kolor i grubość linii.
-
-canvas.addEventListener("mousemove", drawing);:
-    Ta linia kodu dodaje nasłuchiwanie zdarzenia mousemove na elemencie <canvas>. Kiedy użytkownik porusza myszą po elemencie <canvas>, funkcja drawing zostanie wywołana, co pozwoli na rysowanie linii w czasie rzeczywistym, śledząc ruch myszy.
-
-To jest podstawowy przykład, który demonstruje, jak rysować na elemencie <canvas> w JavaScript. Warto zrozumieć, że ctx to kontekst rysowania, który pozwala na wykonywanie różnych operacji rysowania na elemencie <canvas>, a nasłuchiwanie zdarzeń, takie jak mousemove, pozwala na reakcję na interakcje użytkownika.*/
